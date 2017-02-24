@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<data name="signIn" xml:space="preserve">
+      <value>Sign in</value>
+      <comment>[https://accounts.google.com/Login] Button to log in</comment>
+    </data>
+</root>
