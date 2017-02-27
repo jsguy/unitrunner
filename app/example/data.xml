@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+	<data name="mref" xml:space="preserve">
+      <value>Selenium - Web Browser Automation</value>
+      <comment>[https://www.google.com/search?q=seleniumhq] Search for selenium</comment>
+    </data>
 	<data name="signIn" xml:space="preserve">
-      <value>Sign in</value>
+      <value>One account. All of Google</value>
       <comment>[https://accounts.google.com/Login] Button to log in</comment>
     </data>
 </root>

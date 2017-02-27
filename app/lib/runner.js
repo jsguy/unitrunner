@@ -17,10 +17,16 @@ var fs = require('fs'),
 
 		if(seleniumInstances.length < options.maxSeleniumInstances) {
 		    var flow = new Webdriver.promise.ControlFlow()
-					.on('uncaughtException', function(e, n) {
+					.on('uncaughtException', function(e) {
 						//	TODO: Log this to the file?
 						if(options.verbose) {
-							console.log('uncaughtException in flow %d: %s', n, e);
+							console.log('Exception: %s', e);
+						}
+						if(ins.currentTestHandler && typeof ins.currentTestHandler == "function") {
+							console.log('yes handler');
+							ins.currentTestHandler(e);
+						} else {
+							console.log('no handler');
 						}
 					}),
 		    	browser = new Webdriver.Builder().
@@ -66,6 +72,7 @@ var fs = require('fs'),
 				date: (new Date()).toISOString()
 			});
 			output(results[results.length - 1]);
+			processOnCompleteQueue();
 			currentRequestCount -= 1;
 
 			if(currentRequestCount <= 0) {
@@ -83,14 +90,25 @@ var fs = require('fs'),
 	startTime,
 	completeTimer,
 	onCompleteQueue = [],
+	onAllCompleteQueue = [],
 
 	queueOnComplete = function(func){
 		onCompleteQueue.push(func);
 	},
 
+	queueOnAllComplete = function(func){
+		onAllCompleteQueue.push(func);
+	}
+
 	processOnCompleteQueue = function(){
 		for(var i = 0; i < onCompleteQueue.length; i += 1) {
-			onCompleteQueue[i](results);
+			onCompleteQueue[i](results[results.length - 1]);
+		}
+	},
+
+	processOnAllCompleteQueue = function(){
+		for(var i = 0; i < onAllCompleteQueue.length; i += 1) {
+			onAllCompleteQueue[i](results);
 		}
 	},
 
@@ -110,11 +128,11 @@ var fs = require('fs'),
 		try {
 			//	Use the flow to add task, so we can run in parallel
 			instance.flow.execute(function(){
-				testFunc.apply(this, myArgs);
+				instance.currentTestHandler = testFunc.apply(this, myArgs);
 			});
 		} catch(ex){
 			if(options.verbose) {
-				console.log(ex);
+				console.log('EXCEPTION', ex);
 			}
 		}
 	},
@@ -123,13 +141,15 @@ var fs = require('fs'),
 		if(currentRequestCount <= 0) {
 			//	Close all the browsers
 			for(var i = 0; i < seleniumInstances.length; i += 1) {
-				seleniumInstances[i].browser.quit();
+				if(options.quitOnComplete) {
+					seleniumInstances[i].browser.quit();
+				}
 			}
 			if(options.verbose) {
 				console.log("Time: " + (((new Date()).getTime() - startTime)/1000));
 			}
-			processOnCompleteQueue();
-			//	Clear results
+			processOnAllCompleteQueue();
+			//	Clear results, we're done for now.
 			results = [];
 		} else {
 			if(options.verbose) {
@@ -142,6 +162,7 @@ module.exports = function(args){
 	options = def({
 		maxSeleniumInstances: 10,
 		browserTarget: 'phantomjs',//'firefox', 'phantomjs'
+		quitOnComplete: true,
 		logFile: 'log.json',
 		verbose: true
 	}, args || {});
@@ -154,6 +175,7 @@ module.exports = function(args){
 	return {
 		run: runtest,
 		complete: complete,
-		onComplete: queueOnComplete
+		onComplete: queueOnComplete,
+		onAllComplete: queueOnAllComplete
 	};
 };
